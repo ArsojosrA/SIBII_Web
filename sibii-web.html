@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A2620">
+<title>S.I.B.I.I. — Sensor Informador para Bolsa de Infusión Intravenosa</title>
+<meta name="description" content="Un dispositivo de bajo costo que pesa la bolsa de suero y avisa cuánto líquido queda. Proyecto de 5° 2ª, Escuela Politécnica Manuel Belgrano, CABA.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0A2620; --board:#123B33; --hondo:#061A16;
+  --rosa:#B26C86; --rosa-soft:#E7CCD8;
+  --claro:#EAF1EE; --tenue:#93AFA8;
+  --ok:#3ECF8E; --warn:#E8B33A; --alert:#E8624F;
+  --display:'Archivo',system-ui,-apple-system,sans-serif;
+  --body:system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--body);background:var(--ink);color:var(--claro);
+  line-height:1.55;font-size:17px;
+  padding:0 20px calc(40px + env(safe-area-inset-bottom));
+  max-width:560px;margin:0 auto;overflow-x:hidden;
+}
+h1,h2,h3{font-family:var(--display);letter-spacing:-.02em;line-height:1.08}
+.mono{font-family:var(--mono)}
+
+/* ---------- encabezado ---------- */
+header{padding:44px 0 28px;border-bottom:1px solid rgba(255,255,255,.14)}
+.sigla{font-family:var(--display);font-weight:800;font-size:clamp(46px,15vw,64px);letter-spacing:-.045em;line-height:.9}
+.largo{font-family:var(--display);font-weight:600;font-size:17px;color:var(--rosa-soft);margin-top:12px;line-height:1.25}
+.pitch{margin-top:20px;font-size:18px;color:var(--claro)}
+.donde{margin-top:18px;font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue);line-height:1.7}
+
+/* ---------- simulador ---------- */
+.sim{margin:30px 0 8px;background:var(--hondo);border:1px solid rgba(255,255,255,.12);border-radius:14px;padding:20px 18px 18px}
+.sim-rot{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--rosa);font-weight:600}
+.sim-sub{font-size:14px;color:var(--tenue);margin-top:7px;line-height:1.45}
+
+.escena{display:flex;gap:18px;align-items:stretch;margin-top:20px}
+
+/* bolsa */
+.bolsa-caja{width:88px;flex:none;display:flex;flex-direction:column;align-items:center}
+.gancho{width:2px;height:16px;background:var(--tenue)}
+.gancho::before{content:"";display:block;width:26px;height:9px;border:2px solid var(--tenue);border-bottom:0;border-radius:13px 13px 0 0;transform:translateX(-14px)}
+.bolsa{
+  position:relative;width:74px;height:132px;border:2px solid var(--tenue);
+  border-radius:9px 9px 22px 22px;overflow:hidden;background:rgba(255,255,255,.04);
+}
+.liquido{position:absolute;left:0;right:0;bottom:0;background:var(--ok);transition:height .12s linear,background .3s}
+.bolsa-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-weight:800;font-size:23px;color:#fff;
+  text-shadow:0 1px 6px rgba(0,0,0,.6);letter-spacing:-.02em}
+.tubo-g{width:2px;height:22px;background:var(--tenue)}
+
+/* pantalla lcd */
+.lado{flex:1;min-width:0;display:flex;flex-direction:column}
+.lcd{background:#04120F;border:2px solid #17453A;border-radius:6px;padding:11px 9px;font-family:var(--mono)}
+.lcd-fila{color:#8FE3C4;font-size:clamp(11px,3.5vw,14px);letter-spacing:.055em;white-space:pre;line-height:1.75}
+.lcd-rot{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--tenue);margin-bottom:8px}
+.estado{margin-top:12px;display:flex;align-items:center;gap:9px;font-size:14.5px}
+.punto{width:11px;height:11px;border-radius:50%;flex:none;background:var(--ok);transition:background .3s}
+.estado b{font-weight:600}
+.umbral-nota{font-size:13px;color:var(--tenue);margin-top:9px;line-height:1.4;min-height:2.6em}
+
+/* controles */
+.barra-rango{margin-top:20px}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;cursor:pointer
+}
+input[type=range]::-webkit-slider-runnable-track{height:7px;border-radius:4px;background:linear-gradient(90deg,var(--alert) 0 15%,var(--warn) 15% 50%,var(--ok) 50%);opacity:.55}
+input[type=range]::-moz-range-track{height:7px;border-radius:4px;background:linear-gradient(90deg,var(--alert) 0 15%,var(--warn) 15% 50%,var(--ok) 50%);opacity:.55}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:23px;height:23px;border-radius:50%;background:#fff;border:3px solid var(--ink);margin-top:-8px;box-shadow:0 1px 5px rgba(0,0,0,.5)}
+input[type=range]::-moz-range-thumb{width:23px;height:23px;border-radius:50%;background:#fff;border:3px solid var(--ink);box-shadow:0 1px 5px rgba(0,0,0,.5)}
+.botones{display:flex;gap:9px;margin-top:13px}
+button{
+  flex:1;font-family:var(--body);font-size:14.5px;font-weight:600;color:var(--claro);
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);
+  border-radius:9px;padding:12px 8px;cursor:pointer;transition:background .18s
+}
+button:active{background:rgba(255,255,255,.2)}
+button.primario{background:var(--rosa);border-color:var(--rosa);color:#160A0F}
+.pie-sim{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--tenue);margin-top:15px;text-align:center;line-height:1.6}
+
+/* ---------- secciones ---------- */
+section{padding:34px 0;border-bottom:1px solid rgba(255,255,255,.14)}
+section h2{font-size:27px;font-weight:800}
+section .kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--rosa);font-weight:600;margin-bottom:11px}
+section p{margin-top:14px;color:#D6E3DE}
+section p b,section li b{color:#fff;font-weight:600}
+.dato{font-family:var(--display);font-weight:800;font-size:clamp(50px,17vw,70px);color:var(--rosa);letter-spacing:-.045em;line-height:.9;margin-top:6px}
+.dato-pie{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--tenue);margin-top:11px}
+
+.pasos{list-style:none;margin-top:18px;counter-reset:n}
+.pasos li{counter-increment:n;padding-left:38px;position:relative;margin-bottom:16px;color:#D6E3DE}
+.pasos li::before{
+  content:counter(n,decimal-leading-zero);position:absolute;left:0;top:1px;
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--rosa);letter-spacing:.06em
+}
+
+.qa{margin-top:20px}
+.qa div{border-left:2px solid var(--rosa);padding:2px 0 2px 15px;margin-bottom:17px}
+.qa .antes{font-size:14.5px;color:var(--tenue)}
+.qa .luego{margin-top:5px;color:#fff}
+
+.ficha{font-size:14.5px;line-height:1.6;color:#D6E3DE}
+.ficha dt{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--rosa-soft);margin-top:17px}
+.ficha dt:first-child{margin-top:0}
+footer{padding:30px 0 10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tenue);line-height:1.9}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="sigla">S.I.B.I.I.</div>
+  <div class="largo">Sensor Informador para Bolsa<br>de Infusión Intravenosa</div>
+  <p class="pitch">Un dispositivo de bajo costo que pesa la bolsa de suero y avisa cuánto líquido queda. Se cuelga y listo: no hay que configurar el tamaño ni apretar nada.</p>
+  <div class="donde">
+    Escuela Politécnica Manuel Belgrano · 5° 2ª<br>
+    Feria de Educación, Artes, Ciencias y Tecnología 2026<br>
+    Ciudad Autónoma de Buenos Aires
+  </div>
+</header>
+
+<div class="sim">
+  <div class="sim-rot">Probalo acá</div>
+  <div class="sim-sub">Una bolsa real tarda horas en vaciarse. Acá el ciclo entero dura menos de un minuto. Mirá cuándo cambia la pantalla.</div>
+
+  <div class="escena">
+    <div class="bolsa-caja">
+      <div class="gancho"></div>
+      <div class="bolsa">
+        <div class="liquido" id="liq"></div>
+        <div class="bolsa-pct" id="pctBolsa">100%</div>
+      </div>
+      <div class="tubo-g"></div>
+    </div>
+
+    <div class="lado">
+      <div class="lcd">
+        <div class="lcd-rot">Pantalla LCD 16×2</div>
+        <div class="lcd-fila" id="l1">&nbsp;</div>
+        <div class="lcd-fila" id="l2">&nbsp;</div>
+      </div>
+      <div class="estado"><span class="punto" id="punto"></span><b id="estadoTxt">Normal</b></div>
+      <div class="umbral-nota" id="nota"></div>
+    </div>
+  </div>
+
+  <div class="barra-rango">
+    <input type="range" id="rango" min="0" max="1000" value="1000" step="1" aria-label="Peso de la bolsa en gramos">
+  </div>
+  <div class="botones">
+    <button class="primario" id="btnPlay">Pausar</button>
+    <button id="btnReset">Bolsa nueva</button>
+  </div>
+  <div class="pie-sim">Simulación · el panel real lo sirve el ESP32-C3</div>
+</div>
+
+<section>
+  <div class="kicker">El problema</div>
+  <h2>Nadie sabe cuánto queda hasta que alguien va a mirar</h2>
+  <p>En la vía periférica —la más frecuente— el suero cae por gravedad y el control del nivel es <b>totalmente visual</b>: enfermería recorre las habitaciones y mira bolsa por bolsa. Depende de la frecuencia de las rondas y de la carga de trabajo.</p>
+  <p>Existen las bombas de infusión, con monitoreo y alarma propios. Pero cuestan cientos de miles de pesos y se usan casi solo en vía central.</p>
+</section>
+
+<section>
+  <div class="kicker">Cómo funciona</div>
+  <h2>La bolsa se vacía. El sistema lo pesa.</h2>
+  <ol class="pasos">
+    <li>La bolsa cuelga de un gancho sobre una <b>celda de carga</b>, que se deforma y genera una señal de pocos milivoltios.</li>
+    <li>El <b>módulo HX711</b> amplifica y digitaliza esa señal con un conversor de 24 bits.</li>
+    <li>El <b>ESP32-C3</b> lee una vez por segundo, calcula el porcentaje y evalúa los umbrales.</li>
+    <li>Sale por la <b>pantalla LCD</b> junto a la cama y por un <b>panel web</b> que sirve el propio microcontrolador, sin servidores ni apps.</li>
+  </ol>
+  <p>El peso de la bolsa colgada <b>es</b> el 100 %. Para fijarlo, el firmware exige cinco lecturas seguidas que no difieran más de 5 gramos: así descarta una bolsa que todavía oscila o una mano apoyada en el gancho. Funciona con cualquier bolsa, de cualquier tamaño.</p>
+</section>
+
+<section>
+  <div class="kicker">Decisión de diseño</div>
+  <h2>Fatiga de alarmas</h2>
+  <p>En un hospital se acumulan avisos sonoros de decenas de equipos. El personal termina normalizándolos y deja de reaccionar. La bibliografía lo llama <i>alarm fatigue</i>.</p>
+  <p>Por eso <b>el dispositivo no lleva buzzer de ningún tipo</b>. Comunica por jerarquía visual, con código de colores según el nivel. Siempre disponible, nunca invasivo. Un equipo que molesta termina apagado, y un equipo apagado no monitorea nada.</p>
+</section>
+
+<section>
+  <div class="kicker">El costo</div>
+  <div class="dato">$37.900</div>
+  <div class="dato-pie">Costo total del prototipo</div>
+  <p>Con lo que sale <b>una sola</b> bomba de infusión comercial podrían equiparse decenas de bolsas con monitoreo de nivel. La placa la diseñamos en EasyEDA y la fabricamos en el taller de la escuela, así que el costo se limita a la placa virgen y los insumos.</p>
+</section>
+
+<section>
+  <div class="kicker">Qué aprendimos</div>
+  <h2>Diseñar también es saber descartar</h2>
+  <div class="qa">
+    <div>
+      <div class="antes">Antes pensábamos que cuantos más sensores, mejor.</div>
+      <div class="luego">Los testeos dejaron uno solo. El sistema quedó más confiable y más barato.</div>
+    </div>
+    <div>
+      <div class="antes">Antes pensábamos que alcanzaba con que el circuito funcionara.</div>
+      <div class="luego">Un equipo puede fracasar por el entorno donde vive, no por su electrónica.</div>
+    </div>
+    <div>
+      <div class="antes">Antes pensábamos que un testeo fallido era tiempo perdido.</div>
+      <div class="luego">El piezoeléctrico que no detectó nada nos dio la mejor información del proyecto.</div>
+    </div>
+  </div>
+  <p>El sensor de gotas nunca funcionó: la carcasa del buzzer que usamos como receptor aislaba el disco de las vibraciones. Podíamos abrirla, pero nos hicimos otra pregunta: ¿hacía falta contar gotas si el peso ya decía cuánto quedaba? No hacía falta.</p>
+</section>
+
+<section>
+  <div class="kicker">Hasta dónde llega</div>
+  <h2>Es un prototipo educativo</h2>
+  <p>Un uso clínico real requiere registro y certificación de <b>ANMAT</b>. El dispositivo no tiene contacto con el paciente ni con la vía de infusión, lo que reduce mucho su criticidad, pero no lo habilita.</p>
+  <p>Consultamos a la Subsecretaría de Promoción de la Salud de la Cruz Roja Argentina, y sus criterios clínicos corrigieron el diseño antes de que estuviera terminado.</p>
+</section>
+
+<section style="border-bottom:0">
+  <div class="kicker">Ficha del proyecto</div>
+  <dl class="ficha">
+    <dt>Eje principal</dt>
+    <dd>ETP A — Educación Técnico Profesional en Electrónica</dd>
+    <dt>Focos complementarios</dt>
+    <dd>Ciencias de la Salud · Matemática y Física</dd>
+    <dt>Foco transversal</dt>
+    <dd>Lengua y Prácticas del Lenguaje</dd>
+    <dt>Institución</dt>
+    <dd>Escuela Politécnica Manuel Belgrano<br>Distrito Escolar N° 4 — Región 1<br>Bolívar 346, Monserrat, CABA</dd>
+    <dt>Curso</dt>
+    <dd>5° 2ª — Turno vespertino</dd>
+    <dt>Asesores técnicos</dt>
+    <dd>Daniel Conradi · Valentín Ratti</dd>
+  </dl>
+</section>
+
+<footer>
+  S.I.B.I.I. · Abril – agosto 2026<br>
+  Ciudad Autónoma de Buenos Aires
+</footer>
+
+<script>
+(function(){
+  var INICIAL = 1000;              // peso de referencia, en gramos
+  var peso = INICIAL, corriendo = true, ultimo = 0;
+  var VELOCIDAD = 26;              // gramos por segundo
+
+  var liq = document.getElementById('liq');
+  var pctBolsa = document.getElementById('pctBolsa');
+  var l1 = document.getElementById('l1');
+  var l2 = document.getElementById('l2');
+  var punto = document.getElementById('punto');
+  var estadoTxt = document.getElementById('estadoTxt');
+  var nota = document.getElementById('nota');
+  var rango = document.getElementById('rango');
+  var btnPlay = document.getElementById('btnPlay');
+  var btnReset = document.getElementById('btnReset');
+
+  var css = getComputedStyle(document.documentElement);
+  var OK = css.getPropertyValue('--ok').trim();
+  var WARN = css.getPropertyValue('--warn').trim();
+  var ALERT = css.getPropertyValue('--alert').trim();
+
+  // rellena a 16 caracteres, como las líneas reales del display
+  function fila(t){ t = t.slice(0,16); while(t.length < 16) t += ' '; return t; }
+
+  function barra(p){
+    var llenos = Math.round(p/10);
+    var s = '';
+    for (var i=0;i<10;i++) s += (i < llenos ? '#' : '-');
+    return s;
+  }
+
+  function pintar(){
+    var crudo = Math.max(0, Math.min(100, peso / INICIAL * 100));  // para evaluar umbrales
+    var pct = Math.round(crudo);                                   // sólo para mostrar
+    var g = Math.round(peso);
+
+    liq.style.height = crudo + '%';
+    pctBolsa.textContent = pct + '%';
+
+    var color, estado, texto;
+    if (g < 5){
+      color = ALERT; estado = 'Bolsa vacía';
+      l1.textContent = fila('BOLSA VACIA');
+      l2.textContent = fila('CAMBIAR YA');
+      texto = 'Por debajo de 5 gramos el sistema da por agotada la bolsa y lo avisa en las dos líneas.';
+    } else if (crudo <= 15){
+      color = ALERT; estado = 'Nivel bajo';
+      l1.textContent = fila('NIVEL BAJO');
+      l2.textContent = fila(pct + '% ' + barra(pct));
+      texto = 'Al 15 % entra la alerta visual, con prioridad sobre cualquier otra pantalla. Queda tiempo de sobra para preparar el cambio.';
+    } else if (crudo < 50){
+      color = WARN; estado = 'Monitoreando';
+      l1.textContent = fila(g + 'g de ' + INICIAL + 'g');
+      l2.textContent = fila(pct + '% ' + barra(pct));
+      texto = 'Por debajo del 50 % la pantalla pasa sola a modo monitoreo. Una vez que entra no vuelve atrás, aunque la lectura fluctúe.';
+    } else {
+      color = OK; estado = 'Normal';
+      l1.textContent = fila('Red: SIBII');
+      l2.textContent = fila('192.168.4.1');
+      texto = 'En la primera mitad no hay nada que vigilar, así que el display aprovecha para mostrar la dirección del panel web.';
+    }
+
+    liq.style.background = color;
+    punto.style.background = color;
+    estadoTxt.textContent = estado;
+    nota.textContent = texto;
+  }
+
+  function marco(t){
+    if (corriendo){
+      if (ultimo){
+        peso -= VELOCIDAD * (t - ultimo) / 1000;
+        if (peso <= 0){ peso = 0; corriendo = false; btnPlay.textContent = 'Reanudar'; }
+        rango.value = Math.round(peso);
+        pintar();
+      }
+      ultimo = t;
+    } else {
+      ultimo = 0;
+    }
+    requestAnimationFrame(marco);
+  }
+
+  rango.addEventListener('input', function(){
+    corriendo = false; btnPlay.textContent = 'Reanudar';
+    peso = Number(rango.value);
+    pintar();
+  });
+
+  btnPlay.addEventListener('click', function(){
+    if (peso <= 0) return;
+    corriendo = !corriendo;
+    btnPlay.textContent = corriendo ? 'Pausar' : 'Reanudar';
+  });
+
+  btnReset.addEventListener('click', function(){
+    peso = INICIAL; corriendo = true; ultimo = 0;
+    rango.value = INICIAL; btnPlay.textContent = 'Pausar';
+    pintar();
+  });
+
+  pintar();
+  requestAnimationFrame(marco);
+})();
+</script>
+</body>
+</html>
